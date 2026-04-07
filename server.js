@@ -323,7 +323,7 @@ const GEO_FENCE = {
   enabled: true,
   lat: 13.641483,
   lng: 79.419905,
-  radius_meters: 500,    // Allowed radius in meters
+  radius_meters: 50000,  // 50km radius
 };
 
 // Haversine distance between two GPS points (returns meters)
