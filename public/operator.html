@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TTD CRO - Operator Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f6fa; min-height: 100vh; }
+
+    /* Login */
+    .login-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: linear-gradient(135deg, #8B4513, #a0522d); display:flex; align-items:center; justify-content:center; z-index:1000; }
+    .login-overlay.hidden { display:none; }
+    .login-box { background:white; border-radius:16px; padding:40px 32px; width:360px; text-align:center; box-shadow:0 8px 32px rgba(0,0,0,0.3); }
+    .login-box img { width:80px; height:80px; border-radius:50%; background:white; margin-bottom:16px; }
+    .login-box h1 { font-size:18px; color:#333; margin-bottom:4px; }
+    .login-box .sub { font-size:13px; color:#888; margin-bottom:24px; }
+    .login-box input { width:100%; padding:12px; border:2px solid #ddd; border-radius:8px; font-size:15px; margin-bottom:12px; }
+    .login-box input:focus { outline:none; border-color:#8B4513; }
+    .login-box button { width:100%; padding:12px; background:#8B4513; color:white; border:none; border-radius:8px; font-size:15px; font-weight:600; cursor:pointer; }
+    .login-box button:hover { background:#a0522d; }
+    .login-error { color:#c0392b; font-size:13px; margin-bottom:12px; display:none; }
+
+    /* Header */
+    .header { background: linear-gradient(135deg, #8B4513, #a0522d); color:white; padding:10px 20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .header-logo { width:48px; height:48px; flex-shrink:0; border-radius:50%; background:white; padding:2px; }
+    .header-titles { flex:1; min-width:200px; }
+    .header-titles .telugu { font-size:13px; font-weight:600; }
+    .header-titles .english { font-size:15px; font-weight:700; }
+    .header-titles .sub { font-size:11px; opacity:0.85; }
+    .stats { display:flex; gap:20px; font-size:14px; flex-wrap:wrap; }
+    .stats span { opacity:0.85; }
+    .stats strong { color:#2ecc71; }
+    .header-actions { display:flex; gap:8px; align-items:center; }
+    .header-actions .op-name { font-size:12px; opacity:0.8; }
+    .header-actions button { padding:6px 12px; border:1px solid rgba(255,255,255,0.4); background:transparent; color:white; border-radius:6px; font-size:12px; cursor:pointer; }
+    .header-actions button:hover { background:rgba(255,255,255,0.1); }
+
+    .container { max-width:1000px; margin:24px auto; padding:0 20px; }
+
+    /* Tabs */
+    .tabs { display:flex; gap:0; margin-bottom:24px; background:white; border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+    .tab { flex:1; padding:14px; text-align:center; font-size:14px; font-weight:600; cursor:pointer; color:#888; border-bottom:3px solid transparent; transition:all 0.2s; white-space:nowrap; }
+    .tab:hover { color:#333; background:#f8f9fa; }
+    .tab.active { color:#3498db; border-bottom-color:#3498db; }
+    .tab-content { display:none; }
+    .tab-content.active { display:block; }
+
+    /* Cards & sections */
+    .card { background:white; border-radius:12px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin-bottom:24px; }
+    .card h2 { font-size:16px; color:#333; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid #eee; }
+
+    /* Token input */
+    .token-input-row { display:flex; gap:12px; }
+    .token-input-row input { flex:1; padding:14px 16px; border:2px solid #ddd; border-radius:8px; font-size:24px; letter-spacing:8px; text-align:center; text-transform:uppercase; font-weight:700; }
+    .token-input-row input:focus { outline:none; border-color:#3498db; }
+    .token-input-row button { padding:14px 24px; background:#3498db; color:white; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:pointer; white-space:nowrap; }
+    .token-input-row button:hover { background:#2980b9; }
+    .shortcut-hint { text-align:center; color:#aaa; font-size:12px; margin-top:8px; }
+
+    /* Detail rows */
+    .detail-row { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f0f0f0; }
+    .detail-row:last-of-type { border-bottom:none; }
+    .detail-label { color:#888; font-size:14px; }
+    .detail-value { font-weight:600; font-size:14px; color:#333; }
+
+    /* Buttons */
+    .confirm-btn { width:100%; padding:14px; background:#27ae60; color:white; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:pointer; margin-top:20px; }
+    .confirm-btn:hover { background:#219a52; }
+    .confirm-btn:disabled { background:#ccc; cursor:not-allowed; }
+    .btn-primary { padding:10px 20px; background:#3498db; color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
+    .btn-primary:hover { background:#2980b9; }
+    .btn-primary:disabled { background:#ccc; cursor:not-allowed; }
+    .btn-success { background:#27ae60; }
+    .btn-success:hover { background:#219a52; }
+    .btn-danger { background:#e74c3c; }
+    .btn-danger:hover { background:#c0392b; }
+    .btn-outline { padding:8px 16px; border:1px solid #ddd; background:white; color:#333; border-radius:6px; font-size:13px; cursor:pointer; }
+    .btn-outline:hover { background:#f8f9fa; }
+    .btn-sm { padding:6px 12px; font-size:12px; }
+
+    /* Badges */
+    .status-badge, .badge-sm { display:inline-block; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600; text-transform:uppercase; }
+    .pending { background:#fff3cd; color:#856404; }
+    .confirmed { background:#d4edda; color:#155724; }
+    .allotted { background:#cce5ff; color:#004085; }
+    .not_allotted { background:#f8d7da; color:#721c24; }
+
+    /* Messages */
+    .message { text-align:center; padding:16px; border-radius:8px; margin-top:16px; font-weight:600; display:none; }
+    .message.success { display:block; background:#d4edda; color:#155724; }
+    .message.error { display:block; background:#f8d7da; color:#721c24; }
+    .warning-box { background:#f8d7da; color:#721c24; padding:12px; border-radius:8px; margin-top:16px; font-weight:600; border-left:4px solid #c0392b; display:none; }
+
+    /* Camera */
+    .camera-section { margin-top:20px; border-top:1px solid #eee; padding-top:20px; }
+    .camera-section h3 { font-size:14px; color:#333; margin-bottom:12px; }
+    .camera-container { position:relative; background:#000; border-radius:8px; overflow:hidden; text-align:center; display:inline-block; }
+    .camera-container video, .camera-container canvas#photoCanvas { width:100%; max-width:320px; border-radius:8px; }
+    .camera-container canvas#photoCanvas { display:none; }
+    .camera-container canvas#faceOverlay { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
+    .live-match-banner { position:absolute; bottom:0; left:0; right:0; background:rgba(231,76,60,0.92); color:white; padding:8px 12px; font-size:12px; font-weight:600; text-align:center; display:none; z-index:2; }
+    .camera-actions { display:flex; gap:10px; margin-top:12px; }
+    .camera-actions button { flex:1; padding:10px; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
+    .capture-btn { background:#e74c3c; color:white; }
+    .capture-btn:hover { background:#c0392b; }
+    .retake-btn { background:#95a5a6; color:white; display:none; }
+    .retake-btn:hover { background:#7f8c8d; }
+    .photo-required { color:#e74c3c; font-size:13px; margin-top:8px; display:none; }
+    .face-status { font-size:12px; margin-top:8px; padding:6px 10px; border-radius:6px; display:none; }
+    .face-status.loading { display:block; background:#fff3cd; color:#856404; }
+    .face-status.ready { display:block; background:#d4edda; color:#155724; }
+    .face-status.no-face { display:block; background:#f8d7da; color:#721c24; }
+    .face-match-warning { background:#f8d7da; color:#721c24; padding:16px; border-radius:8px; margin-top:16px; border-left:4px solid #e74c3c; display:none; }
+    .face-match-warning h4 { margin-bottom:8px; font-size:14px; }
+    .face-match-warning p { font-size:13px; margin-bottom:12px; }
+    .face-match-warning .match-actions { display:flex; gap:8px; }
+
+    /* Table */
+    .records-toolbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:12px; flex-wrap:wrap; }
+    .records-toolbar select, .records-toolbar input { padding:8px 12px; border:1px solid #ddd; border-radius:6px; font-size:13px; }
+    .records-toolbar input[type="text"] { flex:1; max-width:220px; }
+    .records-toolbar input[type="date"] { width:140px; }
+    .records-count { font-size:13px; color:#888; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    thead th { text-align:left; padding:10px 8px; background:#f8f9fa; color:#666; font-weight:600; border-bottom:2px solid #eee; white-space:nowrap; }
+    tbody td { padding:10px 8px; border-bottom:1px solid #f0f0f0; color:#333; }
+    tbody tr:hover { background:#f8f9fa; }
+    .table-wrap { overflow-x:auto; }
+    .no-records { text-align:center; padding:40px; color:#aaa; }
+
+    /* Lucky Dip */
+    .seva-grid { display:grid; gap:16px; }
+    .seva-card { border:1px solid #eee; border-radius:10px; padding:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
+    .seva-card.drawn { background:#f0fdf4; border-color:#bbf7d0; }
+    .seva-info { flex:1; min-width:200px; }
+    .seva-info h3 { font-size:15px; color:#333; margin-bottom:4px; }
+    .seva-stats { font-size:13px; color:#666; }
+    .seva-stats strong { color:#333; }
+    .seva-controls { display:flex; gap:8px; align-items:center; }
+    .seva-controls input { width:70px; padding:8px; border:1px solid #ddd; border-radius:6px; text-align:center; font-size:14px; font-weight:600; }
+    .seva-controls label { font-size:12px; color:#888; }
+    .draw-summary { margin-top:16px; padding:16px; background:#f8f9fa; border-radius:8px; }
+    .draw-summary h3 { font-size:14px; margin-bottom:12px; }
+
+    /* Export toolbar */
+    .export-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+
+    /* Audit log */
+    .audit-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; }
+    .audit-badge.login { background:#d4edda; color:#155724; }
+    .audit-badge.logout { background:#fff3cd; color:#856404; }
+    .audit-badge.confirm_pilgrim { background:#cce5ff; color:#004085; }
+    .audit-badge.run_draw { background:#e8daef; color:#6c3483; }
+    .audit-badge.reset_draw { background:#f8d7da; color:#721c24; }
+    .audit-badge.export_csv { background:#d5f5e3; color:#1e8449; }
+    .audit-badge.manual_backup { background:#d6eaf8; color:#2874a6; }
+    .audit-badge.cleanup_photos { background:#fdebd0; color:#935116; }
+
+    /* Admin panel */
+    .admin-section { margin-top:24px; padding:20px; background:#f8f9fa; border-radius:10px; border:1px solid #eee; }
+    .admin-section h3 { font-size:15px; color:#333; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid #ddd; }
+    .admin-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; }
+    .admin-card { background:white; border:1px solid #eee; border-radius:8px; padding:16px; }
+    .admin-card h4 { font-size:14px; color:#333; margin-bottom:8px; }
+    .admin-card p { font-size:12px; color:#888; margin-bottom:12px; }
+
+    /* Print styles */
+    @media print {
+      body * { visibility: hidden; }
+      .print-area, .print-area * { visibility: visible; }
+      .print-area { position: absolute; left: 0; top: 0; width: 100%; }
+      .no-print { display: none !important; }
+    }
+
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+      .header { padding:10px 12px; gap:8px; }
+      .header-logo { width:36px; height:36px; }
+      .header-titles .english { font-size:13px; }
+      .header-titles .telugu { font-size:11px; }
+      .header-titles .sub { font-size:10px; }
+      .stats { gap:10px; font-size:12px; }
+      .header-actions { gap:4px; }
+      .header-actions button { padding:4px 8px; font-size:11px; }
+      .container { padding:0 12px; margin:12px auto; }
+      .tabs { border-radius:8px; }
+      .tab { padding:10px 6px; font-size:12px; }
+      .card { padding:16px; border-radius:8px; }
+      .token-input-row { flex-direction:column; }
+      .token-input-row input { font-size:20px; letter-spacing:6px; }
+      .token-input-row button { padding:12px; }
+      .records-toolbar { flex-direction:column; align-items:stretch; }
+      .records-toolbar input[type="text"] { max-width:100%; }
+      .records-toolbar select, .records-toolbar input { width:100%; }
+      .seva-card { flex-direction:column; align-items:stretch; }
+      .seva-controls { justify-content:flex-start; }
+      .export-bar { flex-direction:column; }
+      .export-bar button { width:100%; }
+      .admin-grid { grid-template-columns:1fr; }
+      table { font-size:11px; }
+      thead th, tbody td { padding:6px 4px; }
+    }
+
+    @media (max-width: 480px) {
+      .header { flex-direction:column; text-align:center; }
+      .stats { justify-content:center; }
+      .header-actions { justify-content:center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- LOGIN OVERLAY -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-box">
+      <img src="/images/TTD-Logo.png" alt="TTD Logo">
+      <h1>CRO Operator Login</h1>
+      <div class="sub">Tirumala Tirupati Devasthanams</div>
+      <div class="login-error" id="loginError"></div>
+      <input type="text" id="loginUser" placeholder="Username" value="admin">
+      <input type="password" id="loginPass" placeholder="Password" autofocus>
+      <button onclick="doLogin()">Login</button>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <div class="header">
+    <img src="/images/TTD-Logo.png" alt="TTD Logo" class="header-logo">
+    <div class="header-titles">
+      <div class="telugu">&#x0C24;&#x0C3F;&#x0C30;&#x0C41;&#x0C2E;&#x0C32; &#x0C24;&#x0C3F;&#x0C30;&#x0C41;&#x0C2A;&#x0C24;&#x0C3F; &#x0C26;&#x0C47;&#x0C35;&#x0C38;&#x0C4D;&#x0C25;&#x0C3E;&#x0C28;&#x0C2E;&#x0C41;&#x0C32;&#x0C41;</div>
+      <div class="english">Tirumala Tirupati Devasthanams</div>
+      <div class="sub">CRO Operator Dashboard</div>
+    </div>
+    <div class="stats">
+      <span>Today: <strong id="statTotal">0</strong></span>
+      <span>Confirmed: <strong id="statConfirmed">0</strong></span>
+      <span>Pending: <strong id="statPending">0</strong></span>
+    </div>
+    <div class="header-actions">
+      <span class="op-name" id="opName"></span>
+      <button onclick="doLogout()">Logout</button>
+    </div>
+    <img src="/images/TTD-Logo.png" alt="TTD Logo" class="header-logo">
+  </div>
+
+  <div class="container">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('verify')">Verify Pilgrim</div>
+      <div class="tab" onclick="switchTab('records')">All Records</div>
+      <div class="tab" onclick="switchTab('luckydip')">Lucky Dip</div>
+      <div class="tab" onclick="switchTab('audit')">Audit Log</div>
+      <div class="tab" onclick="switchTab('admin')">Admin</div>
+    </div>
+
+    <!-- TAB: VERIFY -->
+    <div class="tab-content active" id="tab-verify">
+      <div class="card">
+        <h2>Enter Pilgrim Token</h2>
+        <div class="token-input-row">
+          <input type="text" id="tokenInput" maxlength="6" placeholder="ABC123" autocomplete="off">
+          <button onclick="lookupToken()">Lookup</button>
+        </div>
+        <div class="shortcut-hint">Press Enter to lookup | QR scanner auto-submits on 6 chars</div>
+      </div>
+
+      <div class="card" id="pilgrimCard" style="display:none;">
+        <h2>Pilgrim Details <span class="status-badge" id="statusBadge"></span></h2>
+        <div class="detail-row"><span class="detail-label">Enrollment No</span><span class="detail-value" id="dEnroll" style="font-size:18px;color:#c0392b;"></span></div>
+        <div class="detail-row"><span class="detail-label">Name</span><span class="detail-value" id="dName"></span></div>
+        <div class="detail-row"><span class="detail-label">Phone</span><span class="detail-value" id="dPhone"></span></div>
+        <div class="detail-row"><span class="detail-label" id="dIdLabel">Aadhaar</span><span class="detail-value" id="dAadhaar"></span></div>
+        <div class="detail-row"><span class="detail-label">Seva</span><span class="detail-value" id="dSeva"></span></div>
+        <div class="detail-row"><span class="detail-label">Registered At</span><span class="detail-value" id="dTime"></span></div>
+        <div class="warning-box" id="duplicateWarning"></div>
+        <div class="camera-section" id="cameraSection">
+          <h3>Capture Pilgrim Photo (for verification)</h3>
+          <div class="camera-container" id="cameraContainer">
+            <video id="webcam" autoplay playsinline></video>
+            <canvas id="faceOverlay"></canvas>
+            <canvas id="photoCanvas"></canvas>
+            <div class="live-match-banner" id="liveMatchBanner"></div>
+          </div>
+          <div class="camera-actions">
+            <button class="capture-btn" id="captureBtn" onclick="capturePhoto()">Capture Photo</button>
+            <button class="retake-btn" id="retakeBtn" onclick="retakePhoto()">Retake</button>
+          </div>
+          <div class="photo-required" id="photoWarning">Please capture a photo before confirming</div>
+          <div class="face-status" id="faceStatus"></div>
+        </div>
+        <div class="face-match-warning" id="faceMatchWarning">
+          <h4>Face Match Detected</h4>
+          <p id="faceMatchMsg"></p>
+          <div class="match-actions">
+            <button class="btn-danger btn-sm" onclick="forceConfirm()">Confirm Anyway (Override)</button>
+            <button class="btn-outline btn-sm" onclick="cancelConfirm()">Cancel</button>
+          </div>
+        </div>
+        <button class="confirm-btn" id="confirmBtn" onclick="confirmPilgrim()">Verify ID & Confirm Entry</button>
+      </div>
+      <div class="message" id="message"></div>
+    </div>
+
+    <!-- TAB: ALL RECORDS -->
+    <div class="tab-content" id="tab-records">
+      <div class="card">
+        <div class="export-bar">
+          <button class="btn-outline" onclick="exportCSV('all')">Export All (CSV)</button>
+          <button class="btn-outline" onclick="exportCSV('allotted')">Export Allotted (CSV)</button>
+          <button class="btn-outline" onclick="exportCSV('results')">Export Results (CSV)</button>
+        </div>
+        <div class="records-toolbar">
+          <input type="date" id="recordsDate" onchange="loadRecords(1)" title="Filter by date">
+          <select id="filterStatus" onchange="loadRecords(1)">
+            <option value="">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
+          </select>
+          <input type="text" id="searchRecords" placeholder="Search name, token, phone..." oninput="filterRecords()">
+          <span class="records-count" id="recordsCount"></span>
+        </div>
+        <div id="recordsTable"></div>
+      </div>
+    </div>
+
+    <!-- TAB: LUCKY DIP -->
+    <div class="tab-content" id="tab-luckydip">
+      <div class="card">
+        <h2>Seva Lucky Dip - Random Allotment</h2>
+        <div class="records-toolbar" style="margin-bottom:16px;">
+          <input type="date" id="drawDate" onchange="loadSevaConfig()" title="View draws by date">
+          <p style="font-size:13px;color:#666;flex:1;">Configure slots per seva, then run the draw. Each seva drawn once per day.</p>
+        </div>
+        <div class="seva-grid" id="sevaGrid">Loading...</div>
+        <div style="margin-top:20px;text-align:right;">
+          <button class="btn-primary btn-success" onclick="runAllDraws()" id="runAllBtn">Run All Draws</button>
+        </div>
+      </div>
+
+      <div class="card" id="drawResultsCard" style="display:none;">
+        <h2>Draw Results</h2>
+        <div class="records-toolbar">
+          <select id="resultSevaFilter" onchange="loadDrawResults(1)">
+            <option value="">All Sevas</option>
+          </select>
+          <select id="resultStatusFilter" onchange="loadDrawResults(1)">
+            <option value="">All</option>
+            <option value="allotted">Allotted</option>
+            <option value="not_allotted">Not Allotted</option>
+          </select>
+          <span class="records-count" id="resultsCount"></span>
+        </div>
+        <div id="drawResultsTable"></div>
+      </div>
+    </div>
+
+    <!-- TAB: AUDIT LOG -->
+    <div class="tab-content" id="tab-audit">
+      <div class="card">
+        <h2>Operator Audit Log</h2>
+        <div class="records-toolbar">
+          <input type="date" id="auditDate" onchange="loadAuditLog(1)" title="Filter by date">
+          <span class="records-count" id="auditCount"></span>
+        </div>
+        <div id="auditTable"></div>
+      </div>
+    </div>
+
+    <!-- TAB: ADMIN -->
+    <div class="tab-content" id="tab-admin">
+      <div class="card">
+        <h2>Administration</h2>
+        <div class="admin-grid">
+          <div class="admin-card">
+            <h4>Database Backup</h4>
+            <p>Create a manual backup of the database. Auto-backups run daily at midnight IST. Last 10 backups kept.</p>
+            <button class="btn-primary" onclick="createBackup()">Create Backup Now</button>
+            <div id="backupsList" style="margin-top:12px;font-size:12px;color:#666;"></div>
+          </div>
+          <div class="admin-card">
+            <h4>Photo Cleanup</h4>
+            <p>Remove pilgrim photos older than a specified number of days to free disk space.</p>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="number" id="cleanupDays" value="30" min="1" max="365" style="width:70px;padding:8px;border:1px solid #ddd;border-radius:6px;">
+              <span style="font-size:13px;color:#666;">days old</span>
+              <button class="btn-danger btn-sm" onclick="cleanupPhotos()">Clean Up</button>
+            </div>
+            <div id="cleanupResult" style="margin-top:8px;font-size:12px;"></div>
+          </div>
+          <div class="admin-card">
+            <h4>Change Password</h4>
+            <p>Change your operator account password.</p>
+            <input type="password" id="currentPass" placeholder="Current password" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;margin-bottom:8px;font-size:13px;">
+            <input type="password" id="newPass" placeholder="New password (min 6 chars)" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;margin-bottom:8px;font-size:13px;">
+            <button class="btn-primary btn-sm" onclick="changePassword()">Update Password</button>
+            <div id="passResult" style="margin-top:8px;font-size:12px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/face-api.min.js"></script>
+  <script>
+    let authToken = localStorage.getItem('cro_auth_token');
+    let currentToken = '';
+    let capturedPhoto = null;
+    let webcamStream = null;
+    let faceDescriptor = null;
+    let faceModelsLoaded = false;
+
+    // === HTML ESCAPE (prevent XSS) ===
+    function esc(str) {
+      if (str == null) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    // === Date helpers ===
+    function todayDateValue() {
+      // Returns YYYY-MM-DD for date input, using IST components directly
+      const d = new Date();
+      const opts = { timeZone: 'Asia/Kolkata' };
+      const year = d.toLocaleDateString('en-CA', { ...opts, year: 'numeric' });
+      const month = d.toLocaleDateString('en-CA', { ...opts, month: '2-digit' });
+      const day = d.toLocaleDateString('en-CA', { ...opts, day: '2-digit' });
+      return `${year}-${month}-${day}`;
+    }
+
+    function dateInputToIST(dateStr) {
+      // Convert YYYY-MM-DD to DD/MM/YYYY
+      if (!dateStr) return '';
+      const [y, m, d] = dateStr.split('-');
+      return `${d}/${m}/${y}`;
+    }
+
+    function getRecordsDate() {
+      const val = document.getElementById('recordsDate').value;
+      return val ? dateInputToIST(val) : '';
+    }
+
+    function getDrawDate() {
+      const val = document.getElementById('drawDate').value;
+      return val ? dateInputToIST(val) : '';
+    }
+
+    function getAuditDate() {
+      const val = document.getElementById('auditDate').value;
+      return val ? dateInputToIST(val) : '';
+    }
+
+    // === AUTH ===
+    function authHeaders() { return { 'Content-Type': 'application/json', 'X-Auth-Token': authToken }; }
+
+    function authFetch(url, opts = {}) {
+      opts.headers = { ...authHeaders(), ...(opts.headers || {}) };
+      return fetch(url, opts).then(r => {
+        if (r.status === 401) { authToken = null; localStorage.removeItem('cro_auth_token'); showLogin(); throw new Error('Unauthorized'); }
+        return r;
+      });
+    }
+
+    function checkAuth() {
+      if (!authToken) { showLogin(); return; }
+      fetch('/api/pilgrims?page=1&limit=1', { headers: { 'X-Auth-Token': authToken } })
+        .then(r => { if (r.status === 401) { authToken = null; localStorage.removeItem('cro_auth_token'); showLogin(); } else hideLogin(); })
+        .catch(() => showLogin());
+    }
+
+    function showLogin() {
+      document.getElementById('loginOverlay').classList.remove('hidden');
+      document.getElementById('loginPass').focus();
+    }
+
+    function hideLogin() {
+      document.getElementById('loginOverlay').classList.add('hidden');
+      document.getElementById('opName').textContent = localStorage.getItem('cro_op_name') || '';
+      // Set date inputs to today
+      const today = todayDateValue();
+      document.getElementById('recordsDate').value = today;
+      document.getElementById('drawDate').value = today;
+      document.getElementById('auditDate').value = today;
+      loadStats();
+    }
+
+    function doLogin() {
+      const username = document.getElementById('loginUser').value.trim();
+      const password = document.getElementById('loginPass').value;
+      const errEl = document.getElementById('loginError');
+      errEl.style.display = 'none';
+
+      fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { errEl.textContent = data.error; errEl.style.display = 'block'; return; }
+        authToken = data.token;
+        localStorage.setItem('cro_auth_token', data.token);
+        localStorage.setItem('cro_op_name', data.username);
+        hideLogin();
+      })
+      .catch(() => { errEl.textContent = 'Network error'; errEl.style.display = 'block'; });
+    }
+
+    function doLogout() {
+      fetch('/api/logout', { method: 'POST', headers: authHeaders() });
+      authToken = null;
+      localStorage.removeItem('cro_auth_token');
+      localStorage.removeItem('cro_op_name');
+      showLogin();
+    }
+
+    document.getElementById('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+    // === TABS ===
+    const TAB_NAMES = ['verify', 'records', 'luckydip', 'audit', 'admin'];
+
+    function switchTab(tab) {
+      // Stop webcam when leaving verify tab
+      if (tab !== 'verify') stopWebcam();
+
+      document.querySelectorAll('.tab').forEach((t, i) => {
+        t.classList.toggle('active', TAB_NAMES[i] === tab);
+      });
+      TAB_NAMES.forEach(t => {
+        document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+      });
+      if (tab === 'records') loadRecords();
+      if (tab === 'luckydip') loadSevaConfig();
+      if (tab === 'verify') document.getElementById('tokenInput').focus();
+      if (tab === 'audit') loadAuditLog();
+      if (tab === 'admin') loadBackups();
+    }
+
+    // === VERIFY TAB ===
+    const tokenInput = document.getElementById('tokenInput');
+
+    // QR scanner auto-submit: USB barcode scanners type quickly, auto-submit when 6 chars reached
+    tokenInput.addEventListener('input', () => {
+      const val = tokenInput.value.trim();
+      if (val.length === 6 && /^[A-F0-9]{6}$/i.test(val)) {
+        lookupToken();
+      }
+    });
+
+    tokenInput.addEventListener('keydown', e => { if (e.key === 'Enter') lookupToken(); });
+
+    function lookupToken() {
+      const token = tokenInput.value.trim().toUpperCase();
+      if (!token) return;
+      currentToken = token;
+      capturedPhoto = null;
+      faceDescriptor = null;
+      liveMatchResult = null;
+      liveCheckCounter = 0;
+      liveCheckInProgress = false;
+      hideMessage();
+      stopWebcam();
+      document.getElementById('pilgrimCard').style.display = 'none';
+      document.getElementById('faceMatchWarning').style.display = 'none';
+      document.getElementById('liveMatchBanner').style.display = 'none';
+      const faceStatusEl = document.getElementById('faceStatus');
+      faceStatusEl.className = 'face-status';
+      faceStatusEl.style.display = 'none';
+
+      authFetch(`/api/pilgrim/${token}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) {
+            showMessage(data.error, 'error');
+            document.getElementById('pilgrimCard').style.display = 'none';
+            return;
+          }
+          document.getElementById('dEnroll').textContent = data.enrollment_no ? '#' + data.enrollment_no : '-';
+          document.getElementById('dName').textContent = data.name || '';
+          document.getElementById('dPhone').textContent = data.phone || '';
+          document.getElementById('dIdLabel').textContent = (data.id_type === 'passport') ? 'Passport' : 'Aadhaar';
+          document.getElementById('dAadhaar').textContent = data.aadhaar_masked || '';
+          document.getElementById('dSeva').textContent = data.seva || '';
+          document.getElementById('dTime').textContent = data.created_at || '';
+
+          const badge = document.getElementById('statusBadge');
+          badge.textContent = data.status;
+          badge.className = 'status-badge ' + data.status;
+
+          const btn = document.getElementById('confirmBtn');
+          const cam = document.getElementById('cameraSection');
+          const dup = document.getElementById('duplicateWarning');
+
+          if (data.duplicate_warning) {
+            dup.textContent = data.duplicate_warning;
+            dup.style.display = 'block';
+            btn.disabled = true;
+            btn.textContent = 'Cannot Confirm - Duplicate Seva';
+            cam.style.display = 'none';
+          } else if (data.status === 'confirmed') {
+            dup.style.display = 'none';
+            btn.disabled = true;
+            btn.textContent = 'Already Confirmed';
+            cam.style.display = 'none';
+          } else {
+            dup.style.display = 'none';
+            btn.disabled = false;
+            btn.textContent = 'Verify ID & Confirm Entry';
+            cam.style.display = 'block';
+            startWebcam();
+          }
+          document.getElementById('pilgrimCard').style.display = 'block';
+        })
+        .catch(() => showMessage('Network error', 'error'));
+    }
+
+    // === CAMERA + LIVE FACE TRACKING ===
+    let faceTrackingActive = false;
+    let liveFaceCount = 0;
+
+    function startWebcam() {
+      const video = document.getElementById('webcam');
+      const photoCanvas = document.getElementById('photoCanvas');
+      const overlay = document.getElementById('faceOverlay');
+      video.style.display = 'block';
+      photoCanvas.style.display = 'none';
+      overlay.style.display = 'block';
+      capturedPhoto = null;
+      liveFaceCount = 0;
+      document.getElementById('captureBtn').style.display = 'block';
+      document.getElementById('captureBtn').disabled = true;
+      document.getElementById('captureBtn').textContent = 'Waiting for face...';
+      document.getElementById('retakeBtn').style.display = 'none';
+      document.getElementById('photoWarning').style.display = 'none';
+      const statusEl = document.getElementById('faceStatus');
+      statusEl.textContent = 'Starting camera...';
+      statusEl.className = 'face-status loading';
+
+      navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' } })
+        .then(stream => {
+          webcamStream = stream;
+          video.srcObject = stream;
+          video.onloadeddata = () => {
+            // Size overlay to match video
+            overlay.width = video.videoWidth;
+            overlay.height = video.videoHeight;
+            startFaceTracking();
+          };
+        })
+        .catch(() => showMessage('Could not access webcam', 'error'));
+    }
+
+    function stopWebcam() {
+      faceTrackingActive = false;
+      if (webcamStream) { webcamStream.getTracks().forEach(t => t.stop()); webcamStream = null; }
+      const overlay = document.getElementById('faceOverlay');
+      if (overlay) { overlay.getContext('2d').clearRect(0, 0, overlay.width, overlay.height); overlay.style.display = 'none'; }
+    }
+
+    let liveCheckCounter = 0;
+    let liveMatchResult = null;
+    let liveCheckInProgress = false;
+
+    function startFaceTracking() {
+      if (!faceModelsLoaded) {
+        document.getElementById('captureBtn').disabled = false;
+        document.getElementById('captureBtn').textContent = 'Capture Photo';
+        const statusEl = document.getElementById('faceStatus');
+        statusEl.textContent = 'Face tracking unavailable — models loading';
+        statusEl.className = 'face-status loading';
+        return;
+      }
+      faceTrackingActive = true;
+      liveMatchResult = null;
+      liveCheckCounter = 0;
+      document.getElementById('liveMatchBanner').style.display = 'none';
+      trackFaces();
+    }
+
+    async function trackFaces() {
+      if (!faceTrackingActive) return;
+      const video = document.getElementById('webcam');
+      const overlay = document.getElementById('faceOverlay');
+      if (!video || !overlay || video.paused || video.ended) {
+        if (faceTrackingActive) setTimeout(trackFaces, 500);
+        return;
+      }
+
+      const ctx = overlay.getContext('2d');
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+      try {
+        // Every 3rd frame (~900ms), do full descriptor extraction + server check
+        liveCheckCounter++;
+        const doFullCheck = (liveCheckCounter % 3 === 0);
+
+        let detections;
+        if (doFullCheck) {
+          detections = await faceapi.detectAllFaces(video).withFaceLandmarks().withFaceDescriptors();
+        } else {
+          detections = await faceapi.detectAllFaces(video);
+        }
+        liveFaceCount = detections.length;
+
+        const statusEl = document.getElementById('faceStatus');
+        const captureBtn = document.getElementById('captureBtn');
+        const banner = document.getElementById('liveMatchBanner');
+
+        // Draw bounding boxes
+        const scaleX = overlay.width / video.videoWidth;
+        const scaleY = overlay.height / video.videoHeight;
+
+        let boxColor = liveFaceCount === 1 ? '#27ae60' : '#e74c3c';
+        if (liveMatchResult) boxColor = '#e74c3c'; // Red if match found
+
+        detections.forEach(det => {
+          const box = det.detection ? det.detection.box : det.box;
+          ctx.strokeStyle = boxColor;
+          ctx.lineWidth = 3;
+          ctx.strokeRect(box.x * scaleX, box.y * scaleY, box.width * scaleX, box.height * scaleY);
+        });
+
+        // Live dedup check (only when 1 face + full descriptors available)
+        if (doFullCheck && liveFaceCount === 1 && detections[0].descriptor && !liveCheckInProgress) {
+          liveCheckInProgress = true;
+          const desc = Array.from(detections[0].descriptor);
+          authFetch('/api/face-check', {
+            method: 'POST',
+            body: JSON.stringify({ face_descriptor: desc })
+          })
+          .then(r => r.json())
+          .then(data => {
+            liveCheckInProgress = false;
+            if (data.match) {
+              liveMatchResult = data;
+              banner.textContent = `DUPLICATE: Matches "${data.name}" (${data.seva}, Token: ${data.token})`;
+              banner.style.display = 'block';
+            } else {
+              liveMatchResult = null;
+              banner.style.display = 'none';
+            }
+          })
+          .catch(() => { liveCheckInProgress = false; });
+        }
+
+        if (liveFaceCount === 0) {
+          statusEl.textContent = 'No face detected — position face in camera';
+          statusEl.className = 'face-status no-face';
+          captureBtn.disabled = true;
+          captureBtn.textContent = 'Waiting for face...';
+          banner.style.display = 'none';
+          liveMatchResult = null;
+        } else if (liveFaceCount === 1) {
+          if (liveMatchResult) {
+            statusEl.textContent = `DUPLICATE FACE — matches ${liveMatchResult.name}`;
+            statusEl.className = 'face-status no-face';
+          } else {
+            statusEl.textContent = '1 face detected — ready to capture';
+            statusEl.className = 'face-status ready';
+          }
+          captureBtn.disabled = false;
+          captureBtn.textContent = 'Capture Photo';
+        } else {
+          statusEl.textContent = `${liveFaceCount} faces detected — only 1 person allowed`;
+          statusEl.className = 'face-status no-face';
+          captureBtn.disabled = true;
+          captureBtn.textContent = 'Too many faces';
+        }
+      } catch (e) { /* skip frame */ }
+
+      // Run every 300ms for smooth tracking without overloading
+      if (faceTrackingActive) setTimeout(trackFaces, 300);
+    }
+
+    function capturePhoto() {
+      if (liveFaceCount !== 1 && faceModelsLoaded) return;
+      faceTrackingActive = false;
+      const video = document.getElementById('webcam');
+      const photoCanvas = document.getElementById('photoCanvas');
+      const overlay = document.getElementById('faceOverlay');
+      photoCanvas.width = video.videoWidth;
+      photoCanvas.height = video.videoHeight;
+      photoCanvas.getContext('2d').drawImage(video, 0, 0);
+      capturedPhoto = photoCanvas.toDataURL('image/jpeg', 0.7);
+      video.style.display = 'none';
+      overlay.style.display = 'none';
+      photoCanvas.style.display = 'block';
+      document.getElementById('captureBtn').style.display = 'none';
+      document.getElementById('retakeBtn').style.display = 'block';
+      document.getElementById('photoWarning').style.display = 'none';
+      const statusEl = document.getElementById('faceStatus');
+      statusEl.textContent = 'Photo captured — click Verify to confirm';
+      statusEl.className = 'face-status ready';
+      stopWebcam();
+    }
+
+    function retakePhoto() {
+      capturedPhoto = null;
+      faceDescriptor = null;
+      const statusEl = document.getElementById('faceStatus');
+      statusEl.className = 'face-status';
+      statusEl.style.display = 'none';
+      startWebcam();
+    }
+
+    // === CONFIRM ===
+    async function confirmPilgrim(forceConfirm = false) {
+      if (!currentToken) return;
+      if (!capturedPhoto) { document.getElementById('photoWarning').style.display = 'block'; return; }
+
+      const btn = document.getElementById('confirmBtn');
+      btn.disabled = true;
+      document.getElementById('faceMatchWarning').style.display = 'none';
+
+      // Step 1: Extract face descriptor (only on first attempt, not on force-confirm)
+      if (!forceConfirm) {
+        btn.textContent = 'Analyzing face...';
+        const canvas = document.getElementById('photoCanvas');
+        faceDescriptor = await extractFaceDescriptor(canvas);
+
+        if (!faceDescriptor && faceModelsLoaded) {
+          showMessage('No face detected in photo. Please retake with face clearly visible.', 'error');
+          btn.disabled = false;
+          btn.textContent = 'Verify ID & Confirm Entry';
+          return;
+        }
+      }
+
+      // Step 2: Send to server
+      btn.textContent = 'Confirming...';
+      const payload = { photo: capturedPhoto };
+      if (faceDescriptor) payload.face_descriptor = faceDescriptor;
+      if (forceConfirm) payload.force_confirm = true;
+
+      authFetch(`/api/confirm/${currentToken}`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      })
+      .then(r => r.json())
+      .then(data => {
+        // Face match warning - show override option
+        if (data.face_match) {
+          document.getElementById('faceMatchMsg').textContent = data.message;
+          document.getElementById('faceMatchWarning').style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Verify ID & Confirm Entry';
+          return;
+        }
+
+        if (data.error) { showMessage(data.error, 'error'); btn.disabled = false; btn.textContent = 'Verify ID & Confirm Entry'; return; }
+
+        showMessage('Pilgrim confirmed! Downloading acknowledgement...', 'success');
+        btn.textContent = 'Already Confirmed';
+        document.getElementById('cameraSection').style.display = 'none';
+        document.getElementById('faceMatchWarning').style.display = 'none';
+        stopWebcam();
+        document.getElementById('statusBadge').textContent = 'confirmed';
+        document.getElementById('statusBadge').className = 'status-badge confirmed';
+        downloadAcknowledgement(data.pilgrim, capturedPhoto);
+        loadStats();
+        setTimeout(() => { tokenInput.value = ''; tokenInput.focus(); }, 2000);
+      })
+      .catch(() => { showMessage('Network error', 'error'); btn.disabled = false; btn.textContent = 'Verify ID & Confirm Entry'; });
+    }
+
+    function forceConfirm() {
+      confirmPilgrim(true);
+    }
+
+    function cancelConfirm() {
+      document.getElementById('faceMatchWarning').style.display = 'none';
+    }
+
+    function downloadAcknowledgement(pilgrim, photo) {
+      const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>CRO Acknowledgement</title>
+<style>
+body{font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:20px}
+.ack-header{text-align:center;border-bottom:3px solid #c0392b;padding-bottom:12px;margin-bottom:16px}
+.ack-header h1{color:#c0392b;font-size:16px;margin:0}
+.ack-header h2{color:#333;font-size:13px;margin:4px 0 0;font-weight:normal}
+.ack-photo{text-align:center;margin:16px 0}
+.ack-photo img{width:150px;border:2px solid #ccc;border-radius:8px}
+.ack-details{border:1px solid #ddd;border-radius:8px;overflow:hidden}
+.ack-row{display:flex;border-bottom:1px solid #eee}
+.ack-row:last-child{border-bottom:none}
+.ack-label{width:140px;padding:10px 12px;background:#f8f8f8;font-size:13px;color:#666}
+.ack-value{flex:1;padding:10px 12px;font-size:13px;font-weight:600}
+.ack-footer{text-align:center;margin-top:20px;font-size:11px;color:#999;border-top:1px solid #eee;padding-top:12px}
+.print-btn{display:block;margin:20px auto;padding:12px 32px;background:#3498db;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
+.print-btn:hover{background:#2980b9}
+@media print{.print-btn{display:none !important}body{padding:0;margin:0}}
+</style></head><body>
+<div class="ack-header"><h1>Tirumala Tirupati Devasthanams</h1><h2>CRO Seva Lucky Dip - Registration Acknowledgement</h2></div>
+<div class="ack-photo"><img src="${esc(photo)}" alt="Photo"></div>
+<div style="text-align:center;margin:16px 0"><span style="background:#d4edda;color:#155724;padding:6px 16px;border-radius:20px;font-weight:600;font-size:13px">CONFIRMED</span></div>
+<div class="ack-details">
+<div class="ack-row"><div class="ack-label">Enrollment No</div><div class="ack-value">#${esc(pilgrim.enrollment_no||'-')}</div></div>
+<div class="ack-row"><div class="ack-label">Token</div><div class="ack-value">${esc(pilgrim.token)}</div></div>
+<div class="ack-row"><div class="ack-label">Name</div><div class="ack-value">${esc(pilgrim.name)}</div></div>
+<div class="ack-row"><div class="ack-label">Phone</div><div class="ack-value">${esc(pilgrim.phone)}</div></div>
+<div class="ack-row"><div class="ack-label">${pilgrim.id_type==='passport'?'Passport':'Aadhaar'}</div><div class="ack-value">${esc(pilgrim.aadhaar_masked)}</div></div>
+<div class="ack-row"><div class="ack-label">Seva</div><div class="ack-value">${esc(pilgrim.seva)}</div></div>
+<div class="ack-row"><div class="ack-label">Registered At</div><div class="ack-value">${esc(pilgrim.created_at)}</div></div>
+<div class="ack-row"><div class="ack-label">Confirmed At</div><div class="ack-value">${esc(pilgrim.confirmed_at)}</div></div>
+</div>
+<button class="print-btn" onclick="window.print()">Print Acknowledgement</button>
+<div class="ack-footer">Computer-generated acknowledgement from TTD CRO. Please retain for reference.</div>
+</body></html>`;
+      const blob = new Blob([html], { type: 'text/html' });
+      const a = document.createElement('a');
+      const blobUrl = URL.createObjectURL(blob);
+      a.href = blobUrl;
+      a.download = `CRO_Acknowledgement_${pilgrim.token}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    }
+
+    // === RECORDS TAB (paginated, server-side search, date-filterable) ===
+    let currentPage = 1;
+    let totalRecords = 0;
+    const PAGE_SIZE = 100;
+    let searchTimeout = null;
+
+    function loadRecords(page) {
+      if (page) currentPage = page;
+      const status = document.getElementById('filterStatus').value;
+      const search = document.getElementById('searchRecords').value.trim();
+      const date = getRecordsDate();
+      let url = `/api/pilgrims?page=${currentPage}&limit=${PAGE_SIZE}`;
+      if (status) url += `&status=${status}`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+      if (date) url += `&date=${encodeURIComponent(date)}`;
+      authFetch(url)
+        .then(r => r.json())
+        .then(data => {
+          totalRecords = data.total;
+          renderRecords(data.rows, data.total);
+        })
+        .catch(() => {});
+    }
+
+    function filterRecords() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => loadRecords(1), 300);
+    }
+
+    function renderRecords(records, total) {
+      const totalPages = Math.ceil(total / PAGE_SIZE);
+      document.getElementById('recordsCount').textContent = `${total.toLocaleString()} total | Page ${currentPage} of ${totalPages || 1}`;
+      if (!records.length) { document.getElementById('recordsTable').innerHTML = '<div class="no-records">No records found</div>'; return; }
+      let html = `<div class="table-wrap"><table><thead><tr><th>Enroll#</th><th>Token</th><th>Name</th><th>Phone</th><th>ID</th><th>Seva</th><th>Status</th><th>Allotment</th><th>Registered</th><th>Confirmed</th></tr></thead><tbody>`;
+      records.forEach(r => {
+        const allotClass = r.allotment_status === 'allotted' ? 'allotted' : r.allotment_status === 'not_allotted' ? 'not_allotted' : '';
+        const allotBadge = r.allotment_status ? `<span class="badge-sm ${allotClass}">${esc(r.allotment_status.replace('_',' '))}</span>` : '<span style="color:#aaa">-</span>';
+        const statusClass = r.status === 'confirmed' ? 'confirmed' : r.status === 'pending' ? 'pending' : '';
+        html += `<tr><td><strong>${esc(r.enrollment_no||'-')}</strong></td><td>${esc(r.token)}</td><td>${esc(r.name)}</td><td>${esc(r.phone)}</td><td>${esc(r.aadhaar_masked)}</td><td>${esc(r.seva)}</td><td><span class="badge-sm ${statusClass}">${esc(r.status)}</span></td><td>${allotBadge}</td><td>${esc(r.created_at)}</td><td>${esc(r.confirmed_at||'-')}</td></tr>`;
+      });
+      html += '</tbody></table></div>';
+      html += `<div style="display:flex;justify-content:center;gap:8px;margin-top:16px;align-items:center;">`;
+      html += `<button class="btn-outline" onclick="loadRecords(1)" ${currentPage<=1?'disabled':''}>First</button>`;
+      html += `<button class="btn-outline" onclick="loadRecords(${currentPage-1})" ${currentPage<=1?'disabled':''}>Prev</button>`;
+      html += `<span style="font-size:13px;color:#666;">Page ${currentPage} of ${totalPages||1}</span>`;
+      html += `<button class="btn-outline" onclick="loadRecords(${currentPage+1})" ${currentPage>=totalPages?'disabled':''}>Next</button>`;
+      html += `<button class="btn-outline" onclick="loadRecords(${totalPages})" ${currentPage>=totalPages?'disabled':''}>Last</button>`;
+      html += `</div>`;
+      document.getElementById('recordsTable').innerHTML = html;
+    }
+
+    // === EXPORT ===
+    function exportCSV(type) {
+      const date = getRecordsDate();
+      let url = `/api/export/csv?type=${type}`;
+      if (date) url += `&date=${encodeURIComponent(date)}`;
+      // Use fetch with auth header instead of exposing token in URL
+      authFetch(url)
+        .then(r => {
+          const filename = r.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] || `CRO_export_${type}.csv`;
+          return r.blob().then(blob => ({ blob, filename }));
+        })
+        .then(({ blob, filename }) => {
+          const a = document.createElement('a');
+          const blobUrl = URL.createObjectURL(blob);
+          a.href = blobUrl;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(blobUrl);
+        })
+        .catch(() => alert('Export failed. Please try again.'));
+    }
+
+    // === LUCKY DIP TAB ===
+    function loadSevaConfig() {
+      const date = getDrawDate();
+      let url = '/api/seva-config';
+      if (date) url += `?date=${encodeURIComponent(date)}`;
+      authFetch(url)
+        .then(r => r.json())
+        .then(data => {
+          renderSevaGrid(data.sevas, data.date);
+          loadDrawResults();
+        });
+    }
+
+    function renderSevaGrid(sevas, viewDate) {
+      const grid = document.getElementById('sevaGrid');
+      let allDrawn = true;
+      let html = '';
+      const filterSelect = document.getElementById('resultSevaFilter');
+      filterSelect.innerHTML = '<option value="">All Sevas</option>';
+
+      // Check if viewing today or a past date
+      const today = todayDateValue();
+      const isToday = !viewDate || dateInputToIST(today) === viewDate;
+
+      sevas.forEach(s => {
+        const isDrawn = !!s.drawn_at;
+        if (!isDrawn) allDrawn = false;
+        filterSelect.innerHTML += `<option value="${esc(s.seva_name)}">${esc(s.seva_name)}</option>`;
+
+        const escapedSeva = esc(s.seva_name).replace(/'/g, "\\'");
+        html += `<div class="seva-card ${isDrawn ? 'drawn' : ''}">
+          <div class="seva-info">
+            <h3>${esc(s.seva_name)}</h3>
+            <div class="seva-stats">
+              Registered: <strong>${s.total_registrations}</strong> &nbsp;|&nbsp;
+              Confirmed: <strong>${s.confirmed_count}</strong> &nbsp;|&nbsp;
+              Allotted: <strong style="color:#27ae60">${s.allotted_count}</strong>
+            </div>
+            ${isDrawn ? `<div style="font-size:12px;color:#27ae60;margin-top:4px;">Draw completed at ${esc(s.drawn_at)}</div>` : ''}
+          </div>
+          <div class="seva-controls">
+            <div>
+              <label>Slots</label><br>
+              <input type="number" id="slots-${CSS.escape(s.seva_name)}" value="${s.slots}" min="1" ${isDrawn || !isToday ? 'disabled' : ''} onchange="updateSlots('${escapedSeva}', this.value)">
+            </div>
+            ${isToday ? `
+              ${isDrawn ? `
+                <button class="btn-danger btn-sm" onclick="resetDraw('${escapedSeva}')">Reset</button>
+                <button class="btn-primary" disabled>Drawn</button>
+              ` : `
+                <button class="btn-primary btn-success" onclick="runDraw('${escapedSeva}')">Run Draw</button>
+              `}
+            ` : `<button class="btn-primary" disabled>${isDrawn ? 'Drawn' : 'Past Date'}</button>`}
+          </div>
+        </div>`;
+      });
+      grid.innerHTML = html;
+
+      const runAllBtn = document.getElementById('runAllBtn');
+      if (!isToday) {
+        runAllBtn.disabled = true;
+        runAllBtn.textContent = 'Viewing Past Date';
+      } else {
+        runAllBtn.disabled = allDrawn;
+        runAllBtn.textContent = allDrawn ? 'All Draws Complete' : 'Run All Draws';
+      }
+    }
+
+    function updateSlots(seva, value) {
+      const slots = parseInt(value);
+      if (!slots || slots < 1) return;
+      authFetch('/api/seva-config', {
+        method: 'POST',
+        body: JSON.stringify({ seva_name: seva, slots })
+      });
+    }
+
+    function runDraw(seva) {
+      if (!confirm(`Run lucky dip draw for "${seva}"? This cannot be undone.`)) return;
+      authFetch(`/api/draw/${encodeURIComponent(seva)}`, { method: 'POST' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { alert(data.error); return; }
+        alert(`Draw complete for ${seva}!\n\nConfirmed: ${data.total_confirmed}\nSlots: ${data.slots}\nAllotted: ${data.allotted}\nNot Allotted: ${data.not_allotted}`);
+        loadSevaConfig();
+      });
+    }
+
+    function resetDraw(seva) {
+      const confirmText = prompt(`To reset the draw for "${seva}", type exactly:\nRESET ${seva}`);
+      if (!confirmText) return;
+      authFetch(`/api/draw-reset/${encodeURIComponent(seva)}`, {
+        method: 'POST',
+        body: JSON.stringify({ confirm_text: confirmText })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { alert(data.error); return; }
+        alert(data.message);
+        loadSevaConfig();
+      });
+    }
+
+    function runAllDraws() {
+      if (!confirm('Run lucky dip draw for ALL sevas that haven\'t been drawn yet? This cannot be undone.')) return;
+      authFetch('/api/seva-config')
+        .then(r => r.json())
+        .then(async data => {
+          const pending = data.sevas.filter(s => !s.drawn_at && s.confirmed_count > 0);
+          if (pending.length === 0) { alert('No sevas to draw (either already drawn or no confirmed pilgrims)'); return; }
+          let results = [];
+          for (const s of pending) {
+            const r = await authFetch(`/api/draw/${encodeURIComponent(s.seva_name)}`, { method: 'POST' });
+            const d = await r.json();
+            if (d.error) { results.push(`${s.seva_name}: ${d.error}`); }
+            else { results.push(`${s.seva_name}: ${d.allotted} allotted / ${d.total_confirmed} confirmed`); }
+          }
+          alert('All draws complete!\n\n' + results.join('\n'));
+          loadSevaConfig();
+        });
+    }
+
+    // === DRAW RESULTS (paginated) ===
+    let drawPage = 1;
+    const DRAW_PAGE_SIZE = 100;
+
+    function loadDrawResults(page) {
+      if (page) drawPage = page;
+      const seva = document.getElementById('resultSevaFilter').value;
+      const status = document.getElementById('resultStatusFilter').value;
+      const date = getDrawDate();
+      let url = `/api/draw-results?page=${drawPage}&limit=${DRAW_PAGE_SIZE}`;
+      if (seva) url += `&seva=${encodeURIComponent(seva)}`;
+      if (status) url += `&status=${status}`;
+      if (date) url += `&date=${encodeURIComponent(date)}`;
+
+      authFetch(url)
+        .then(r => r.json())
+        .then(data => {
+          const card = document.getElementById('drawResultsCard');
+          if (data.total === 0) { card.style.display = 'none'; return; }
+          card.style.display = 'block';
+          const totalPages = Math.ceil(data.total / DRAW_PAGE_SIZE);
+          document.getElementById('resultsCount').textContent = `${data.total.toLocaleString()} total | Page ${drawPage} of ${totalPages}`;
+
+          let html = `<div class="table-wrap"><table><thead><tr><th>Enroll#</th><th>Token</th><th>Name</th><th>Phone</th><th>Seva</th><th>Result</th></tr></thead><tbody>`;
+          data.rows.forEach(r => {
+            const badge = r.allotment_status === 'allotted'
+              ? '<span class="badge-sm allotted">ALLOTTED</span>'
+              : '<span class="badge-sm not_allotted">NOT ALLOTTED</span>';
+            html += `<tr><td><strong>${esc(r.enrollment_no||'-')}</strong></td><td>${esc(r.token)}</td><td>${esc(r.name)}</td><td>${esc(r.phone)}</td><td>${esc(r.seva)}</td><td>${badge}</td></tr>`;
+          });
+          html += '</tbody></table></div>';
+          html += `<div style="display:flex;justify-content:center;gap:8px;margin-top:16px;align-items:center;">`;
+          html += `<button class="btn-outline" onclick="loadDrawResults(1)" ${drawPage<=1?'disabled':''}>First</button>`;
+          html += `<button class="btn-outline" onclick="loadDrawResults(${drawPage-1})" ${drawPage<=1?'disabled':''}>Prev</button>`;
+          html += `<span style="font-size:13px;color:#666;">Page ${drawPage} of ${totalPages}</span>`;
+          html += `<button class="btn-outline" onclick="loadDrawResults(${drawPage+1})" ${drawPage>=totalPages?'disabled':''}>Next</button>`;
+          html += `<button class="btn-outline" onclick="loadDrawResults(${totalPages})" ${drawPage>=totalPages?'disabled':''}>Last</button>`;
+          html += `</div>`;
+          document.getElementById('drawResultsTable').innerHTML = html;
+        })
+        .catch(() => {});
+    }
+
+    // === AUDIT LOG TAB ===
+    let auditPage = 1;
+    const AUDIT_PAGE_SIZE = 50;
+
+    function loadAuditLog(page) {
+      if (page) auditPage = page;
+      const date = getAuditDate();
+      let url = `/api/audit-log?page=${auditPage}&limit=${AUDIT_PAGE_SIZE}`;
+      if (date) url += `&date=${encodeURIComponent(date)}`;
+
+      authFetch(url)
+        .then(r => r.json())
+        .then(data => {
+          const totalPages = Math.ceil(data.total / AUDIT_PAGE_SIZE);
+          document.getElementById('auditCount').textContent = `${data.total.toLocaleString()} entries | Page ${auditPage} of ${totalPages || 1}`;
+
+          if (!data.rows.length) {
+            document.getElementById('auditTable').innerHTML = '<div class="no-records">No audit entries found</div>';
+            return;
+          }
+
+          let html = `<div class="table-wrap"><table><thead><tr><th>Time</th><th>Operator</th><th>Action</th><th>Details</th><th>Token</th></tr></thead><tbody>`;
+          data.rows.forEach(r => {
+            const actionClass = r.action || '';
+            html += `<tr>
+              <td style="white-space:nowrap;">${esc(r.created_at)}</td>
+              <td><strong>${esc(r.operator_name)}</strong></td>
+              <td><span class="audit-badge ${actionClass}">${esc(r.action.replace(/_/g,' '))}</span></td>
+              <td>${esc(r.details || '-')}</td>
+              <td>${r.target_token ? esc(r.target_token) : '-'}</td>
+            </tr>`;
+          });
+          html += '</tbody></table></div>';
+          html += `<div style="display:flex;justify-content:center;gap:8px;margin-top:16px;align-items:center;">`;
+          html += `<button class="btn-outline" onclick="loadAuditLog(1)" ${auditPage<=1?'disabled':''}>First</button>`;
+          html += `<button class="btn-outline" onclick="loadAuditLog(${auditPage-1})" ${auditPage<=1?'disabled':''}>Prev</button>`;
+          html += `<span style="font-size:13px;color:#666;">Page ${auditPage} of ${totalPages||1}</span>`;
+          html += `<button class="btn-outline" onclick="loadAuditLog(${auditPage+1})" ${auditPage>=totalPages?'disabled':''}>Next</button>`;
+          html += `<button class="btn-outline" onclick="loadAuditLog(${totalPages})" ${auditPage>=totalPages?'disabled':''}>Last</button>`;
+          html += `</div>`;
+          document.getElementById('auditTable').innerHTML = html;
+        })
+        .catch(() => {});
+    }
+
+    // === ADMIN TAB ===
+    function createBackup() {
+      authFetch('/api/backup', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) { alert(data.error); return; }
+          alert(`Backup created: ${data.file}`);
+          loadBackups();
+        });
+    }
+
+    function loadBackups() {
+      authFetch('/api/backups')
+        .then(r => r.json())
+        .then(backups => {
+          if (!backups.length) {
+            document.getElementById('backupsList').textContent = 'No backups yet.';
+            return;
+          }
+          let html = '<strong>Recent backups:</strong><br>';
+          backups.slice(0, 5).forEach(b => {
+            html += `${esc(b.name)} (${b.size_mb} MB)<br>`;
+          });
+          document.getElementById('backupsList').innerHTML = html;
+        })
+        .catch(() => {});
+    }
+
+    function cleanupPhotos() {
+      const days = parseInt(document.getElementById('cleanupDays').value);
+      if (!days || days < 1) { alert('Enter a valid number of days'); return; }
+      if (!confirm(`Delete all photos older than ${days} days? This cannot be undone.`)) return;
+
+      authFetch('/api/cleanup-photos', {
+        method: 'POST',
+        body: JSON.stringify({ days_old: days })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { alert(data.error); return; }
+        document.getElementById('cleanupResult').innerHTML = `<span style="color:#27ae60;">Deleted ${data.deleted} photos older than ${data.days_old} days.</span>`;
+      });
+    }
+
+    function changePassword() {
+      const current = document.getElementById('currentPass').value;
+      const newPass = document.getElementById('newPass').value;
+      if (!current || !newPass) { document.getElementById('passResult').innerHTML = '<span style="color:#e74c3c;">Both fields required</span>'; return; }
+
+      authFetch('/api/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ current_password: current, new_password: newPass })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { document.getElementById('passResult').innerHTML = `<span style="color:#e74c3c;">${esc(data.error)}</span>`; return; }
+        document.getElementById('passResult').innerHTML = '<span style="color:#27ae60;">Password updated successfully!</span>';
+        document.getElementById('currentPass').value = '';
+        document.getElementById('newPass').value = '';
+      });
+    }
+
+    // === STATS & MESSAGES ===
+    function loadStats() {
+      authFetch('/api/stats').then(r => r.json()).then(data => {
+        document.getElementById('statTotal').textContent = data.total || 0;
+        document.getElementById('statConfirmed').textContent = data.confirmed || 0;
+        document.getElementById('statPending').textContent = data.pending || 0;
+      }).catch(() => {});
+    }
+
+    function showMessage(text, type) { const el = document.getElementById('message'); el.textContent = text; el.className = 'message ' + type; }
+    function hideMessage() { document.getElementById('message').className = 'message'; }
+
+    // === FACE-API MODEL LOADING ===
+    async function loadFaceModels() {
+      try {
+        await faceapi.nets.ssdMobilenetv1.loadFromUri('/models');
+        await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
+        await faceapi.nets.faceRecognitionNet.loadFromUri('/models');
+        faceModelsLoaded = true;
+        console.log('Face-API models loaded');
+      } catch (e) {
+        console.warn('Face-API models failed to load:', e);
+      }
+    }
+
+    async function extractFaceDescriptor(canvas) {
+      if (!faceModelsLoaded) return null;
+      const statusEl = document.getElementById('faceStatus');
+      statusEl.textContent = 'Analyzing face...';
+      statusEl.className = 'face-status loading';
+      try {
+        const detections = await faceapi.detectAllFaces(canvas).withFaceLandmarks().withFaceDescriptors();
+        if (detections.length === 1) {
+          statusEl.textContent = 'Face detected - ready for verification';
+          statusEl.className = 'face-status ready';
+          return Array.from(detections[0].descriptor);
+        } else if (detections.length > 1) {
+          statusEl.textContent = `${detections.length} faces detected - only 1 person allowed in photo`;
+          statusEl.className = 'face-status no-face';
+          return null;
+        } else {
+          statusEl.textContent = 'No face detected - retake with face clearly visible';
+          statusEl.className = 'face-status no-face';
+          return null;
+        }
+      } catch (e) {
+        statusEl.textContent = 'Face analysis unavailable';
+        statusEl.className = 'face-status no-face';
+        return null;
+      }
+    }
+
+    // === INIT ===
+    checkAuth();
+    setInterval(loadStats, 30000);
+    loadFaceModels();
+  </script>
+</body>
+</html>

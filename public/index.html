@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TTD CRO - Seva Registration</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #fef9e7;
+      min-height: 100vh;
+    }
+    .header {
+      background: linear-gradient(135deg, #8B4513, #a0522d);
+      color: white;
+      text-align: center;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+    .header-logo {
+      width: 56px;
+      height: 56px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: white;
+      padding: 2px;
+    }
+    .header-text { text-align: center; }
+    .header-text .telugu { font-size: 15px; font-weight: 600; }
+    .header-text .english { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
+    .header-text .sub { font-size: 12px; opacity: 0.9; margin-top: 2px; }
+    .container {
+      max-width: 420px;
+      margin: 0 auto;
+      padding: 20px 16px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      font-size: 14px;
+      color: #333;
+      margin-bottom: 6px;
+    }
+    input, select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #c0392b;
+    }
+    .btn {
+      width: 100%;
+      padding: 14px;
+      background: #c0392b;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .btn:hover:not(:disabled) {
+      background: #a93226;
+    }
+    .error {
+      color: #c0392b;
+      font-size: 13px;
+      margin-top: 4px;
+    }
+    .token-result {
+      display: none;
+      text-align: center;
+      padding: 30px 20px;
+    }
+    .token-result .token-code {
+      font-size: 48px;
+      font-weight: 700;
+      color: #c0392b;
+      letter-spacing: 6px;
+      background: white;
+      border: 3px dashed #c0392b;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .token-result h2 {
+      color: #27ae60;
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+    .token-result p {
+      color: #555;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .token-result .instruction {
+      background: #eafaf1;
+      border-left: 4px solid #27ae60;
+      padding: 12px;
+      margin-top: 20px;
+      text-align: left;
+      border-radius: 0 8px 8px 0;
+      font-size: 14px;
+    }
+    .note {
+      background: #fff3cd;
+      border-left: 4px solid #f39c12;
+      padding: 10px 12px;
+      margin-bottom: 20px;
+      border-radius: 0 8px 8px 0;
+      font-size: 13px;
+      color: #856404;
+    }
+    /* Status Check */
+    .divider { text-align:center; margin:30px 0 20px; color:#aaa; font-size:13px; position:relative; }
+    .divider::before, .divider::after { content:''; position:absolute; top:50%; width:35%; height:1px; background:#ddd; }
+    .divider::before { left:0; }
+    .divider::after { right:0; }
+    .status-section { background:white; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+    .status-section h3 { font-size:15px; color:#333; margin-bottom:12px; text-align:center; }
+    .status-input-row { display:flex; gap:10px; }
+    .status-input-row input { flex:1; padding:12px; border:2px solid #ddd; border-radius:8px; font-size:18px; letter-spacing:4px; text-align:center; text-transform:uppercase; font-weight:700; }
+    .status-input-row input:focus { outline:none; border-color:#3498db; }
+    .status-input-row button { padding:12px 18px; background:#3498db; color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
+    .status-result { margin-top:16px; padding:16px; border-radius:8px; display:none; text-align:center; }
+    .status-result.show { display:block; }
+    .status-result .badge { display:inline-block; padding:6px 20px; border-radius:20px; font-weight:700; font-size:14px; text-transform:uppercase; margin-bottom:8px; }
+    .status-result .badge.allotted { background:#d4edda; color:#155724; }
+    .status-result .badge.not_allotted { background:#f8d7da; color:#721c24; }
+    .status-result .badge.pending { background:#fff3cd; color:#856404; }
+    .status-result .badge.confirmed { background:#cce5ff; color:#004085; }
+    .status-result .detail { font-size:13px; color:#555; margin-top:4px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="/images/TTD-Logo.png" alt="TTD Logo" class="header-logo">
+    <div class="header-text">
+      <div class="telugu">&#x0C24;&#x0C3F;&#x0C30;&#x0C41;&#x0C2E;&#x0C32; &#x0C24;&#x0C3F;&#x0C30;&#x0C41;&#x0C2A;&#x0C24;&#x0C3F; &#x0C26;&#x0C47;&#x0C35;&#x0C38;&#x0C4D;&#x0C25;&#x0C3E;&#x0C28;&#x0C2E;&#x0C41;&#x0C32;&#x0C41;</div>
+      <div class="english">Tirumala Tirupati Devasthanams</div>
+      <div class="sub">CRO Seva Lucky Dip - Self Registration</div>
+    </div>
+    <img src="/images/TTD-Logo.png" alt="TTD Logo" class="header-logo">
+  </div>
+
+  <div class="container">
+    <!-- Geo-fence block -->
+    <div id="geoBlock" style="display:none; text-align:center; padding:40px 20px;">
+      <div id="geoStatus" style="font-size:16px; color:#856404; background:#fff3cd; padding:16px; border-radius:10px; margin-bottom:16px; font-weight:600;">
+        Checking your location...
+      </div>
+    </div>
+
+    <!-- Registration Form -->
+    <div id="formSection">
+      <div class="note">
+        Fill this form while waiting in queue. You will receive a token code.
+        Show this token at the counter for quick verification.
+      </div>
+
+      <form id="regForm" onsubmit="submitForm(event)">
+        <div class="form-group">
+          <label for="name">Full Name (as on Aadhaar)</label>
+          <input type="text" id="name" placeholder="Enter your full name" required autocomplete="name">
+        </div>
+
+        <div class="form-group">
+          <label for="phone">Phone Number</label>
+          <input type="tel" id="phone" placeholder="10-digit mobile number" required
+                 pattern="\d{10}" maxlength="10" inputmode="numeric" autocomplete="tel">
+          <div class="error" id="phoneError"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="idType">ID Proof Type</label>
+          <select id="idType" required onchange="onIdTypeChange()">
+            <option value="aadhaar">Aadhaar Card</option>
+            <option value="passport">Passport</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="idNumber" id="idLabel">Aadhaar Number</label>
+          <input type="text" id="idNumber" placeholder="12-digit Aadhaar number" required
+                 maxlength="12" inputmode="numeric">
+          <div class="error" id="idError"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="seva">Seva Preference</label>
+          <select id="seva" required>
+            <option value="">-- Select Seva --</option>
+            <option value="Suprabhatam">Suprabhatam</option>
+            <option value="Thomala Seva">Thomala Seva</option>
+            <option value="Archana">Archana</option>
+            <option value="Astadala Pada Padmaradhana">Astadala Pada Padmaradhana</option>
+            <option value="Vishesha Pooja">Vishesha Pooja</option>
+            <option value="Sahasra Deepalankara Seva">Sahasra Deepalankara Seva</option>
+            <option value="Nijapada Darshanam">Nijapada Darshanam</option>
+          </select>
+        </div>
+
+        <div class="error" id="formError" style="display:none; background:#f8d7da; color:#721c24; padding:12px; border-radius:8px; margin-top:12px; font-weight:600; text-align:center;"></div>
+        <button type="submit" class="btn" id="submitBtn">Register for Lucky Dip</button>
+      </form>
+    </div>
+
+    <!-- Token Result -->
+    <div id="tokenSection" class="token-result">
+      <h2>Registration Successful!</h2>
+      <p style="font-size: 16px; margin-bottom: 4px;">Enrollment No: <strong id="enrollDisplay" style="color: #2c3e50; font-size: 20px;"></strong></p>
+      <p>Your token code is:</p>
+      <div class="token-code" id="tokenDisplay"></div>
+      <img id="qrImage" style="margin: 16px auto; display: block; width: 200px; height: 200px;" alt="QR Code">
+      <p style="font-size: 13px; color: #888; margin-bottom: 12px;">Show this QR code or tell the token at the counter</p>
+      <div class="instruction">
+        <strong>Next steps:</strong><br>
+        1. Remember or screenshot this token code<br>
+        2. When you reach the counter, tell the operator your token<br>
+        3. Show your ID proof for verification<br>
+        4. Operator will confirm your entry in seconds
+      </div>
+      <button class="btn" style="margin-top: 20px;" onclick="resetForm()">Register Another Pilgrim</button>
+    </div>
+
+    <!-- Check Allotment Status -->
+    <div class="divider">OR</div>
+    <div class="status-section">
+      <h3>Check Your Allotment Status</h3>
+      <div class="status-input-row">
+        <input type="text" id="statusToken" maxlength="6" placeholder="TOKEN" autocomplete="off">
+        <button onclick="checkStatus()">Check</button>
+      </div>
+      <div class="status-result" id="statusResult">
+        <div class="badge" id="statusBadge"></div>
+        <div class="detail" id="statusDetail"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('statusToken').addEventListener('keydown', e => { if (e.key === 'Enter') checkStatus(); });
+
+    function checkStatus() {
+      const token = document.getElementById('statusToken').value.trim().toUpperCase();
+      if (!token) return;
+      const result = document.getElementById('statusResult');
+      const badge = document.getElementById('statusBadge');
+      const detail = document.getElementById('statusDetail');
+
+      fetch(`/api/status/${token}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) { badge.className = 'badge pending'; badge.textContent = 'Not Found'; detail.textContent = 'No registration found with this token'; result.classList.add('show'); return; }
+
+          let statusText, badgeClass, detailText;
+          if (data.allotment_status === 'allotted') {
+            statusText = 'ALLOTTED'; badgeClass = 'allotted';
+            detailText = `Congratulations ${data.name}! You have been allotted "${data.seva}".`;
+          } else if (data.allotment_status === 'not_allotted') {
+            statusText = 'NOT ALLOTTED'; badgeClass = 'not_allotted';
+            detailText = `Sorry ${data.name}, you were not allotted for "${data.seva}" in today's draw.`;
+          } else if (data.status === 'confirmed') {
+            statusText = 'CONFIRMED - AWAITING DRAW'; badgeClass = 'confirmed';
+            detailText = `${data.name}, your registration for "${data.seva}" is confirmed. Lucky dip draw has not been conducted yet.`;
+          } else {
+            statusText = 'PENDING VERIFICATION'; badgeClass = 'pending';
+            detailText = `${data.name}, please visit the counter to verify your ID for "${data.seva}".`;
+          }
+          badge.className = 'badge ' + badgeClass;
+          badge.textContent = statusText;
+          detail.textContent = detailText;
+          result.classList.add('show');
+        })
+        .catch(() => { badge.className = 'badge pending'; badge.textContent = 'Error'; detail.textContent = 'Network error. Try again.'; result.classList.add('show'); });
+    }
+
+    function onIdTypeChange() {
+      const type = document.getElementById('idType').value;
+      const input = document.getElementById('idNumber');
+      const label = document.getElementById('idLabel');
+      if (type === 'passport') {
+        label.textContent = 'Passport Number';
+        input.placeholder = 'e.g. A1234567';
+        input.maxLength = 8;
+        input.inputMode = 'text';
+      } else {
+        label.textContent = 'Aadhaar Number';
+        input.placeholder = '12-digit Aadhaar number';
+        input.maxLength = 12;
+        input.inputMode = 'numeric';
+      }
+      input.value = '';
+      document.getElementById('idError').textContent = '';
+    }
+
+    // === GEOFENCING ===
+    let userGeoLat = null;
+    let userGeoLng = null;
+    let geoFenceEnabled = false;
+
+    // Haversine distance between two GPS points (meters)
+    function geoDistanceClient(lat1, lng1, lat2, lng2) {
+      const R = 6371000;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+      const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function initGeoFence() {
+      fetch('/api/geo-config')
+        .then(r => r.json())
+        .then(config => {
+          if (!config.enabled) {
+            document.getElementById('geoBlock').style.display = 'none';
+            document.getElementById('formSection').style.display = 'block';
+            return;
+          }
+          geoFenceEnabled = true;
+          document.getElementById('geoBlock').style.display = 'block';
+          document.getElementById('formSection').style.display = 'none';
+
+          if (!navigator.geolocation) {
+            document.getElementById('geoStatus').textContent = 'Your browser does not support location services. Please use a modern browser.';
+            document.getElementById('geoStatus').style.background = '#f8d7da';
+            document.getElementById('geoStatus').style.color = '#721c24';
+            return;
+          }
+
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              userGeoLat = pos.coords.latitude;
+              userGeoLng = pos.coords.longitude;
+
+              const dist = geoDistanceClient(userGeoLat, userGeoLng, config.lat, config.lng);
+
+              if (dist <= config.radius) {
+                document.getElementById('geoBlock').style.display = 'none';
+                document.getElementById('formSection').style.display = 'block';
+              } else {
+                document.getElementById('geoStatus').innerHTML =
+                  '<div style="font-size:40px;margin-bottom:12px;">&#x1F6AB;</div>' +
+                  '<div>Registration is only available at the CRO Office, Tirupati.</div>' +
+                  '<div style="font-size:13px;margin-top:8px;font-weight:normal;color:#856404;">You are ' + Math.round(dist) + 'm away. Please come to the CRO office to register.</div>';
+                document.getElementById('geoStatus').style.background = '#f8d7da';
+                document.getElementById('geoStatus').style.color = '#721c24';
+              }
+            },
+            (err) => {
+              let msg = 'Location access denied.';
+              let hint = 'Please enable location/GPS and refresh the page. Location is required to verify you are at the CRO office.';
+              if (err.code === 1) {
+                msg = 'Location permission denied.';
+                hint = 'Please allow location access in your browser settings and refresh the page.';
+              } else if (err.code === 2) {
+                msg = 'Location unavailable.';
+                hint = 'GPS signal not available. Please make sure GPS is enabled on your device and try again outdoors.';
+              } else if (err.code === 3) {
+                msg = 'Location request timed out.';
+                hint = 'GPS took too long to respond. Please ensure GPS is on and try refreshing the page.';
+              }
+              document.getElementById('geoStatus').innerHTML =
+                '<div><strong>' + msg + '</strong></div>' +
+                '<div style="font-size:13px;margin-top:8px;font-weight:normal;">' + hint + '</div>' +
+                '<div style="margin-top:12px;"><button onclick="location.reload()" style="padding:8px 20px;background:#0d6efd;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;">Retry</button></div>';
+              document.getElementById('geoStatus').style.background = '#f8d7da';
+              document.getElementById('geoStatus').style.color = '#721c24';
+            },
+            { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
+          );
+        })
+        .catch(() => {
+          document.getElementById('geoBlock').style.display = 'none';
+          document.getElementById('formSection').style.display = 'block';
+        });
+    }
+
+    initGeoFence();
+
+    function submitForm(e) {
+      e.preventDefault();
+
+      const name = document.getElementById('name').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const id_type = document.getElementById('idType').value;
+      const id_number = document.getElementById('idNumber').value.trim();
+      const seva = document.getElementById('seva').value;
+
+      // Validate
+      let valid = true;
+      if (!/^\d{10}$/.test(phone)) {
+        document.getElementById('phoneError').textContent = 'Enter valid 10-digit number';
+        valid = false;
+      } else {
+        document.getElementById('phoneError').textContent = '';
+      }
+
+      if (id_type === 'aadhaar' && !/^\d{12}$/.test(id_number)) {
+        document.getElementById('idError').textContent = 'Enter valid 12-digit Aadhaar';
+        valid = false;
+      } else if (id_type === 'passport' && !/^[A-Z]\d{7}$/i.test(id_number)) {
+        document.getElementById('idError').textContent = 'Enter valid passport (1 letter + 7 digits)';
+        valid = false;
+      } else {
+        document.getElementById('idError').textContent = '';
+      }
+
+      if (!valid) return;
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.textContent = 'Registering...';
+
+      const payload = { name, phone, id_number, id_type, seva };
+      if (geoFenceEnabled && userGeoLat != null) {
+        payload.geo_lat = userGeoLat;
+        payload.geo_lng = userGeoLng;
+      }
+
+      fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        const errEl = document.getElementById('formError');
+        if (data.error) {
+          errEl.textContent = data.error;
+          errEl.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Register for Lucky Dip';
+          return;
+        }
+        errEl.style.display = 'none';
+        document.getElementById('enrollDisplay').textContent = '#' + data.enrollment_no;
+        document.getElementById('tokenDisplay').textContent = data.token;
+        document.getElementById('qrImage').src = data.qr;
+        document.getElementById('formSection').style.display = 'none';
+        document.getElementById('tokenSection').style.display = 'block';
+      })
+      .catch(() => {
+        const errEl = document.getElementById('formError');
+        errEl.textContent = 'Network error. Please try again.';
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Register for Lucky Dip';
+      });
+    }
+
+    function resetForm() {
+      document.getElementById('regForm').reset();
+      document.getElementById('formError').style.display = 'none';
+      document.getElementById('formSection').style.display = 'block';
+      document.getElementById('tokenSection').style.display = 'none';
+      document.getElementById('submitBtn').disabled = false;
+      document.getElementById('submitBtn').textContent = 'Register for Lucky Dip';
+    }
+  </script>
+</body>
+</html>

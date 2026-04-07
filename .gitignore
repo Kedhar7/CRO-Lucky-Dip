@@ -1,0 +1,10 @@
+node_modules/
+photos/
+backups/
+*.db
+*.db-wal
+*.db-shm
+.encryption_key
+server.key
+server.cert
+.claude/
