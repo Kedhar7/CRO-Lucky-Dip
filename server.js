@@ -242,24 +242,6 @@ function todayIST() {
   return `${day}/${month}/${year}`;
 }
 
-// Get current IST time as total minutes since midnight
-function getISTTimeMinutes() {
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata', hour12: false });
-  const [h, m] = timeStr.split(':').map(Number);
-  return h * 60 + m;
-}
-
-// Registration window constants (IST)
-const REG_OPEN_MINUTES = 10 * 60 + 30;   // 10:30 AM
-const REG_CLOSE_MINUTES = 17 * 60;        // 5:00 PM
-const AUTO_DRAW_MINUTES = 17 * 60 + 30;   // 5:30 PM
-
-function isRegistrationOpen() {
-  const mins = getISTTimeMinutes();
-  return mins >= REG_OPEN_MINUTES && mins < REG_CLOSE_MINUTES;
-}
-
 function generateToken() {
   return crypto.randomBytes(3).toString('hex').toUpperCase();
 }
@@ -387,20 +369,15 @@ app.get('/api/geo-config', (req, res) => {
   });
 });
 
-// Public endpoint: registration window status + available sevas for today
+// Public endpoint: available sevas for today
 app.get('/api/registration-status', (req, res) => {
   const today = todayIST();
-  const open = isRegistrationOpen();
 
   const enabledSevas = db.prepare(
     'SELECT seva_name, slots FROM seva_config WHERE draw_date = ? AND enabled = 1'
   ).all(today);
 
   res.json({
-    registration_open: open,
-    open_time: '10:30 AM',
-    close_time: '5:00 PM',
-    draw_time: '5:30 PM',
     available_sevas: enabledSevas.map(s => s.seva_name),
     date: today
   });
@@ -507,11 +484,6 @@ setInterval(() => {
 app.post('/api/register', async (req, res) => {
   if (!checkRateLimit(req.ip)) {
     return res.status(429).json({ error: 'Too many registrations. Please wait a minute and try again.' });
-  }
-
-  // Check registration time window (10:30 AM - 5:00 PM IST)
-  if (!isRegistrationOpen()) {
-    return res.status(403).json({ error: 'Registration is currently closed. Registration hours: 10:30 AM - 5:00 PM IST.' });
   }
 
   const { name, phone, id_number, id_type, seva, geo_lat, geo_lng } = req.body;
@@ -1212,93 +1184,6 @@ app.get('/api/export/csv', authMiddleware, (req, res) => {
   logAudit(req.operator.id, req.operator.username, 'export_csv', `Exported ${type || 'all'} for ${targetDate}`);
   res.end();
 });
-
-// ===================== AUTO-DRAW SCHEDULER (5:30 PM IST) =====================
-
-let lastAutoDrawDate = '';
-
-function runAutoDrawForDate(today) {
-  const enabledSevas = db.prepare(
-    'SELECT seva_name, slots FROM seva_config WHERE draw_date = ? AND enabled = 1 AND drawn_at IS NULL'
-  ).all(today);
-
-  if (enabledSevas.length === 0) {
-    console.log(`[Auto-Draw] No enabled sevas to draw for ${today}`);
-    return;
-  }
-
-  for (const sevaConfig of enabledSevas) {
-    const { seva_name, slots } = sevaConfig;
-
-    const confirmed = db.prepare(
-      `SELECT id, token, name FROM pilgrims WHERE seva = ? AND status = '${STATUS.CONFIRMED}' AND created_at LIKE ? ORDER BY id`
-    ).all(seva_name, `${today}%`);
-
-    if (confirmed.length === 0) {
-      console.log(`[Auto-Draw] No confirmed pilgrims for "${seva_name}", skipping`);
-      continue;
-    }
-
-    // Fisher-Yates shuffle for fair randomness
-    const shuffled = [...confirmed];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = crypto.randomInt(0, i + 1);
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-
-    const winners = shuffled.slice(0, Math.min(slots, shuffled.length));
-    const winnerIds = new Set(winners.map(w => w.id));
-
-    const updateAllotted = db.prepare(`UPDATE pilgrims SET allotment_status = '${STATUS.ALLOTTED}' WHERE id = ?`);
-    const updateNotAllotted = db.prepare(`UPDATE pilgrims SET allotment_status = '${STATUS.NOT_ALLOTTED}' WHERE id = ?`);
-
-    const drawTxn = db.transaction(() => {
-      for (const p of confirmed) {
-        if (winnerIds.has(p.id)) {
-          updateAllotted.run(p.id);
-        } else {
-          updateNotAllotted.run(p.id);
-        }
-      }
-      const drawTime = nowIST();
-      db.prepare(`INSERT INTO seva_config (seva_name, slots, draw_date, drawn_at, enabled)
-        VALUES (?, ?, ?, ?, 1) ON CONFLICT(seva_name, draw_date) DO UPDATE SET drawn_at = ?`
-      ).run(seva_name, slots, today, drawTime, drawTime);
-    });
-
-    drawTxn();
-    logAudit(null, 'system', 'auto_draw', `Auto-draw for ${seva_name}: ${winners.length} allotted / ${confirmed.length} confirmed`);
-    console.log(`[Auto-Draw] ${seva_name}: ${winners.length} allotted / ${confirmed.length} confirmed`);
-  }
-}
-
-// Check every 30 seconds for auto-draw time
-setInterval(() => {
-  const mins = getISTTimeMinutes();
-  const today = todayIST();
-
-  if (mins >= AUTO_DRAW_MINUTES && mins <= AUTO_DRAW_MINUTES + 1 && lastAutoDrawDate !== today) {
-    lastAutoDrawDate = today;
-    console.log(`[Auto-Draw] Running automatic draw at 5:30 PM IST for ${today}`);
-    runAutoDrawForDate(today);
-  }
-}, 30000);
-
-// On startup: run missed auto-draw if server started after 5:30 PM
-{
-  const startupMins = getISTTimeMinutes();
-  if (startupMins >= AUTO_DRAW_MINUTES) {
-    const today = todayIST();
-    const undrawn = db.prepare('SELECT COUNT(*) as cnt FROM seva_config WHERE draw_date = ? AND enabled = 1 AND drawn_at IS NULL').get(today);
-    if (undrawn.cnt > 0) {
-      console.log(`[Auto-Draw] Server started after draw time, running missed auto-draw for ${today}`);
-      lastAutoDrawDate = today;
-      runAutoDrawForDate(today);
-    } else {
-      lastAutoDrawDate = today;
-    }
-  }
-}
 
 // ===================== START =====================
 

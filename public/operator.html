@@ -156,7 +156,6 @@
     .audit-badge.export_csv { background:#d5f5e3; color:#1e8449; }
     .audit-badge.manual_backup { background:#d6eaf8; color:#2874a6; }
     .audit-badge.cleanup_photos { background:#fdebd0; color:#935116; }
-    .audit-badge.auto_draw { background:#e8daef; color:#6c3483; }
     .audit-badge.toggle_seva { background:#d6eaf8; color:#2874a6; }
 
     /* Admin panel */
@@ -238,7 +237,6 @@
       <span>Today: <strong id="statTotal">0</strong></span>
       <span>Confirmed: <strong id="statConfirmed">0</strong></span>
       <span>Pending: <strong id="statPending">0</strong></span>
-      <span>Registration: <strong id="statWindow" style="color:#f39c12;">--</strong></span>
     </div>
     <div class="header-actions">
       <span class="op-name" id="opName"></span>
@@ -332,12 +330,12 @@
       <div class="card">
         <h2>Seva Lucky Dip - Random Allotment</h2>
         <div style="background:#eafaf1; border-left:4px solid #27ae60; padding:12px; border-radius:0 8px 8px 0; margin-bottom:16px; font-size:13px;">
-          <strong>Daily Schedule:</strong> Registration 10:30 AM - 5:00 PM | Auto-draw at 5:30 PM IST<br>
-          <span style="color:#666;">Enable sevas and set slots before 10:30 AM. Draw runs automatically at 5:30 PM for all enabled sevas. You can also run draws manually.</span>
+          <strong>How it works:</strong> Enable sevas for today, set the number of slots, then run the draw when ready.<br>
+          <span style="color:#666;">Only enabled sevas appear on the pilgrim registration page. Each seva can be drawn once per day.</span>
         </div>
         <div class="records-toolbar" style="margin-bottom:16px;">
           <input type="date" id="drawDate" onchange="loadSevaConfig()" title="View draws by date">
-          <p style="font-size:13px;color:#666;flex:1;">Toggle sevas on/off, set slots, then draw at 5:30 PM or manually.</p>
+          <p style="font-size:13px;color:#666;flex:1;">Toggle sevas on/off, set slots, then run the draw.</p>
         </div>
         <div class="seva-grid" id="sevaGrid">Loading...</div>
         <div style="margin-top:20px;text-align:right;">
@@ -1312,12 +1310,6 @@ body{font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:20px}
         document.getElementById('statTotal').textContent = data.total || 0;
         document.getElementById('statConfirmed').textContent = data.confirmed || 0;
         document.getElementById('statPending').textContent = data.pending || 0;
-      }).catch(() => {});
-      // Update registration window status
-      fetch('/api/registration-status').then(r => r.json()).then(data => {
-        const el = document.getElementById('statWindow');
-        el.textContent = data.registration_open ? 'OPEN' : 'CLOSED';
-        el.style.color = data.registration_open ? '#2ecc71' : '#e74c3c';
       }).catch(() => {});
     }
 

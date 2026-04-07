@@ -172,8 +172,7 @@
     <div id="formSection" style="display:none;">
       <div class="note">
         Fill this form while waiting in queue. You will receive a token code.
-        Show this token at the counter for quick verification.<br>
-        <strong>Registration: 10:30 AM - 5:00 PM | Draw: 5:30 PM IST</strong>
+        Show this token at the counter for quick verification.
       </div>
 
       <form id="regForm" onsubmit="submitForm(event)">
@@ -392,21 +391,6 @@
       try {
         const res = await fetch('/api/registration-status');
         const status = await res.json();
-
-        if (!status.registration_open) {
-          // Registration window is closed
-          document.getElementById('geoBlock').style.display = 'block';
-          document.getElementById('formSection').style.display = 'none';
-          document.getElementById('geoStatus').innerHTML =
-            '<div style="font-size:40px;margin-bottom:12px;">&#x1F551;</div>' +
-            '<div style="font-weight:700;font-size:18px;">Registration is Currently Closed</div>' +
-            '<div style="font-size:14px;margin-top:8px;font-weight:normal;color:#856404;">Registration hours: ' + status.open_time + ' - ' + status.close_time + ' IST</div>' +
-            '<div style="font-size:13px;margin-top:4px;font-weight:normal;color:#666;">Lucky dip draw at ' + status.draw_time + ' IST</div>' +
-            '<div style="margin-top:12px;"><button onclick="location.reload()" style="padding:8px 20px;background:#0d6efd;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;">Refresh</button></div>';
-          document.getElementById('geoStatus').style.background = '#fff3cd';
-          document.getElementById('geoStatus').style.color = '#856404';
-          return;
-        }
 
         if (status.available_sevas.length === 0) {
           // No sevas enabled today
