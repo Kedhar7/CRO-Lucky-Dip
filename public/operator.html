@@ -518,8 +518,12 @@
     const TAB_NAMES = ['verify', 'records', 'luckydip', 'audit', 'admin'];
 
     function switchTab(tab) {
-      // Stop webcam when leaving verify tab
-      if (tab !== 'verify') stopWebcam();
+      // Stop webcam and clear stale state when leaving verify tab
+      if (tab !== 'verify') {
+        stopWebcam();
+        capturedPhoto = null;
+        faceDescriptor = null;
+      }
 
       document.querySelectorAll('.tab').forEach((t, i) => {
         t.classList.toggle('active', TAB_NAMES[i] === tab);

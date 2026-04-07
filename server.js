@@ -476,8 +476,8 @@ app.post('/api/register', async (req, res) => {
   if (!name || !phone || !id_number || !id_type || !seva) {
     return res.status(400).json({ error: 'All fields are required' });
   }
-  if (typeof name !== 'string' || name.trim().length > 100) {
-    return res.status(400).json({ error: 'Name must be under 100 characters' });
+  if (typeof name !== 'string' || name.trim().length === 0 || name.trim().length > 100) {
+    return res.status(400).json({ error: 'Name is required and must be under 100 characters' });
   }
   if (!SEVAS.includes(seva)) {
     return res.status(400).json({ error: 'Invalid seva selection' });
@@ -663,6 +663,7 @@ app.post('/api/confirm/:token', authMiddleware, (req, res) => {
   if (!photo) return res.status(400).json({ error: 'Photo is required for verification' });
 
   const token = req.params.token.toUpperCase();
+  const hasValidDescriptor = face_descriptor && Array.isArray(face_descriptor) && face_descriptor.length === 128;
 
   const pilgrimCheck = db.prepare(`SELECT id, seva FROM pilgrims WHERE token = ? AND status = '${STATUS.PENDING}'`).get(token);
   if (!pilgrimCheck) {
@@ -671,7 +672,7 @@ app.post('/api/confirm/:token', authMiddleware, (req, res) => {
 
   // Face dedup check: compare against cached descriptors of confirmed pilgrims today
   let faceMatch = null;
-  if (face_descriptor && Array.isArray(face_descriptor) && face_descriptor.length === 128 && !force_confirm) {
+  if (hasValidDescriptor && !force_confirm) {
     faceMatch = findFaceMatch(face_descriptor);
   }
 
@@ -693,9 +694,7 @@ app.post('/api/confirm/:token', authMiddleware, (req, res) => {
   fs.writeFileSync(path.join(PHOTOS_DIR, photoFilename), Buffer.from(base64Data, 'base64'));
 
   // Store face descriptor as JSON string
-  const descriptorJson = (face_descriptor && Array.isArray(face_descriptor) && face_descriptor.length === 128)
-    ? JSON.stringify(face_descriptor)
-    : null;
+  const descriptorJson = hasValidDescriptor ? JSON.stringify(face_descriptor) : null;
 
   db.prepare(
     `UPDATE pilgrims SET status = '${STATUS.CONFIRMED}', photo_file = ?, face_descriptor = ?, confirmed_at = ? WHERE token = ? AND status = '${STATUS.PENDING}'`
@@ -706,7 +705,7 @@ app.post('/api/confirm/:token', authMiddleware, (req, res) => {
   ).get(token);
 
   // Add to face cache so next face-check picks it up immediately
-  if (face_descriptor && Array.isArray(face_descriptor) && face_descriptor.length === 128) {
+  if (hasValidDescriptor) {
     addToFaceCache(token, pilgrim.name, pilgrim.seva, face_descriptor);
   }
 
@@ -727,8 +726,9 @@ app.get('/api/photo/:filename', authMiddleware, (req, res) => {
 // List pilgrims (paginated, server-side search, date-filterable)
 app.get('/api/pilgrims', authMiddleware, (req, res) => {
   const { status, search, page = 1, limit = 100, date } = req.query;
-  const offset = (Math.max(1, parseInt(page)) - 1) * parseInt(limit);
-  const lim = Math.min(500, Math.max(1, parseInt(limit)));
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const lim = Math.min(500, Math.max(1, parseInt(limit, 10) || 100));
+  const offset = (pageNum - 1) * lim;
 
   const targetDate = (date && isValidDate(date)) ? date : todayIST();
 
@@ -754,8 +754,8 @@ app.get('/api/pilgrims', authMiddleware, (req, res) => {
      FROM pilgrims WHERE ${whereClause} ORDER BY id DESC LIMIT ? OFFSET ?`
   ).all(...params, lim, offset);
 
-  rows.forEach(r => { r.has_photo = !!r.photo_file; });
-  res.json({ rows, total: countRow.total, page: parseInt(page), limit: lim, date: targetDate });
+  rows.forEach(r => { r.has_photo = !!r.photo_file; delete r.photo_file; });
+  res.json({ rows, total: countRow.total, page: pageNum, limit: lim, date: targetDate });
 });
 
 // Stats (date-filterable, auth required)
@@ -924,8 +924,9 @@ app.post('/api/draw-reset/:seva', authMiddleware, (req, res) => {
 app.get('/api/draw-results', authMiddleware, (req, res) => {
   const { seva, status, page = 1, limit = 100, date } = req.query;
   const targetDate = (date && isValidDate(date)) ? date : todayIST();
-  const offset = (Math.max(1, parseInt(page)) - 1) * parseInt(limit);
-  const lim = Math.min(500, Math.max(1, parseInt(limit)));
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const lim = Math.min(500, Math.max(1, parseInt(limit, 10) || 100));
+  const offset = (pageNum - 1) * lim;
 
   let where = ["allotment_status IS NOT NULL", "created_at LIKE ?"];
   const params = [`${targetDate}%`];
@@ -948,15 +949,16 @@ app.get('/api/draw-results', authMiddleware, (req, res) => {
      FROM pilgrims WHERE ${whereClause} ${orderBy} LIMIT ? OFFSET ?`
   ).all(...params, lim, offset);
 
-  res.json({ rows, total: countRow.total, page: parseInt(page), limit: lim, date: targetDate });
+  res.json({ rows, total: countRow.total, page: pageNum, limit: lim, date: targetDate });
 });
 
 // ===================== AUDIT LOG =====================
 
 app.get('/api/audit-log', authMiddleware, (req, res) => {
   const { page = 1, limit = 50, date } = req.query;
-  const offset = (Math.max(1, parseInt(page)) - 1) * parseInt(limit);
-  const lim = Math.min(200, Math.max(1, parseInt(limit)));
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const lim = Math.min(200, Math.max(1, parseInt(limit, 10) || 50));
+  const offset = (pageNum - 1) * lim;
 
   let where = ['1=1'];
   let params = [];
@@ -973,7 +975,7 @@ app.get('/api/audit-log', authMiddleware, (req, res) => {
     `SELECT id, operator_name, action, details, target_token, created_at FROM audit_log WHERE ${whereClause} ORDER BY id DESC LIMIT ? OFFSET ?`
   ).all(...params, lim, offset);
 
-  res.json({ rows, total: countRow.total, page: parseInt(page), limit: lim });
+  res.json({ rows, total: countRow.total, page: pageNum, limit: lim });
 });
 
 // ===================== PHOTO CLEANUP =====================
@@ -1125,9 +1127,9 @@ app.get('/api/export/csv', authMiddleware, (req, res) => {
     ];
     res.write(row.join(',') + '\n');
   }
-  res.end();
 
   logAudit(req.operator.id, req.operator.username, 'export_csv', `Exported ${type || 'all'} for ${targetDate}`);
+  res.end();
 });
 
 // ===================== START =====================
